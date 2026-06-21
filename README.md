@@ -1,2 +1,3 @@
-# Jiga-Project
-Its pronounced jif
+Snaptube
+A Video Streaming Social Media Platform
+
