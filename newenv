@@ -1,0 +1,4 @@
+MONGODB_USERNAME="3pcforme_db_user"
+MONGODB_PASSWORD="CORq3PVOK8r9FNET"
+MONGODB_URI="mongodb+srv://3pcforme_db_user:CORq3PVOK8r9FNET@snaptube.frfdsff.mongodb.net"
+mongodb+srv://<db_username>:CORq3PVOK8r9FNET@snaptube.frfdsff.mongodb.net/?appName=Snaptube
