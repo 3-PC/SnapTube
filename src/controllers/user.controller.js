@@ -35,7 +35,7 @@ const registerUser = asyncHandler( async (req, res) => {
     })
 
     if(existingUser){
-        if(existingUser.username === username){
+        if(existingUser.username === username.toLowerCase()){
             throw new ApiError(
                 409,
                 "Username is taken"
@@ -51,7 +51,13 @@ const registerUser = asyncHandler( async (req, res) => {
 
     // check for images, check for avatar
     const avatarLocalPath = req.files?.avatar[0]?.path
-    const coverImageLocalPath = req.files?.coverImage[0]?.path
+
+    // const coverImageLocalPath = req.files?.coverImage[0]?.path
+    
+    let coverImageLocalPath;
+    if(req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0){
+        coverImageLocalPath = req.files.coverImage.path
+    }
 
     if(!avatarLocalPath){
         throw new ApiError(
