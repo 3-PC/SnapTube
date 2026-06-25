@@ -232,7 +232,7 @@ const logoutUser = asyncHandler( async(req, res) => {
 })
 
 const refreshAccessToken = asyncHandler( async(req, res) => {
-    console.log("Entered")
+console.log("Entered")
    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
     if(!incomingRefreshToken){
@@ -287,9 +287,43 @@ const refreshAccessToken = asyncHandler( async(req, res) => {
     }
 })
 
+const changeCurrentPassword = asyncHandler(async(req, res) => {
+    const {oldPassword, newPassword} = req.body
+
+    if(oldPassword == newPassword){
+        throw new ApiError(
+            400,
+            "New Password cannot be same as old Password"
+        )
+    }
+    const userId = req.user?._id
+
+    const user = await User.findById(userId)
+    const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
+
+    if(!isPasswordCorrect){
+        throw new ApiError(400, "Invalid Old Password")
+    }
+
+    user.password = newPassword
+    await user.save({validateBeforeSave : false})
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Password Changed Successfully",
+            {
+                user
+            }
+        )
+    )
+})
+
 export { 
     registerUser,
     loginUser,
     logoutUser,
-    refreshAccessToken
+    refreshAccessToken,
+    changeCurrentPassword
 }
