@@ -4,6 +4,7 @@ import { User } from "../models/user.models.js"
 import { uploadToCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt, { decode } from "jsonwebtoken"
+import { upload } from "../middleware/multer.middleware.js";
 
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -91,7 +92,7 @@ const registerUser = asyncHandler( async (req, res) => {
     const avatarToCloudinary= await uploadToCloudinary(avatarLocalPath)
     const coverImageToCloudinary = await uploadToCloudinary(coverImageLocalPath)
     
-    if(!avatarToCloudinary){
+    if(!avatarToCloudinary.url){
         throw new ApiError(409, "Avatar image was not uploaded")
     }
 
@@ -232,7 +233,6 @@ const logoutUser = asyncHandler( async(req, res) => {
 })
 
 const refreshAccessToken = asyncHandler( async(req, res) => {
-console.log("Entered")
    const incomingRefreshToken = req.cookies.refreshToken || req.body.refreshToken
 
     if(!incomingRefreshToken){
@@ -320,10 +320,147 @@ const changeCurrentPassword = asyncHandler(async(req, res) => {
     )
 })
 
+const getCurrentUser = asyncHandler( async(req,res) => {
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+           "Current User fetched Successfully",
+           req.user
+        )   
+    )
+})
+
+const updateAccountDetails = asyncHandler( async(req, res) => {
+    const {fullName, email} = req.body
+
+    if(!fullName && !email){
+        throw new ApiError(
+            400,
+            "Please enter new details"
+        )
+    }
+
+    const user = await User.findById(req.user?._id).select("-password -refreshToken")
+    
+    // const updatedUser = User.findByIdAndUpdate(
+    //     req.user?._id,
+    //     {
+    //         $set : {
+    //             fullName : fullName,
+    //         }
+    //     }
+
+    // )
+
+    if(fullName && user.fullName == fullName){
+        throw new ApiError(
+            400,"Updated name cannot be same as before"
+        )
+    }
+    if(email && user.email == email){
+        throw new ApiError(
+            400,"Updated email cannot be same as before"
+        )
+    }
+
+    if(fullName) user.fullName = fullName
+    if(email) user.email = email
+
+    await user.save({validateBeforeSave : false})
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Details Changed Successfully",
+            {
+                user
+            }
+        )
+    )
+
+})
+
+const updateUserAvatar = asyncHandler( async(req, res) => {
+     const avatarLocalPath = req.file?.path
+    
+     if(!avatarLocalPath){
+        throw new ApiError(400,"Avatar file is missing")
+     }
+
+     const avatar = await uploadToCloudinary(avatarLocalPath)
+
+     if(!avatar.url){
+        throw new ApiError(400, "Error while Uploading to Cloudinary")
+     }
+
+     const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set : {
+                avatar : avatar.url
+            }
+        },
+        {new : true}
+     ).select("-password -refreshToken")
+
+     return res
+     .status(200)
+     .json(
+        new ApiResponse(
+            200,
+            "Avatar Changed Successully",
+            {
+                user
+            }
+        )
+     )
+})
+
+const updateUserCoverImage = asyncHandler( async(req, res) => {
+    const coverImageLocalPath = req.file?.path
+
+    if(!coverImageLocalPath){
+        throw new ApiError(400, "Cover Image is missing")
+    }
+
+    const coverImage = await uploadToCloudinary(coverImageLocalPath)
+
+    if(!coverImage.url){
+        throw new ApiError(400, "Error while uploading cover image")
+    }
+
+    const user = await User.findByIdAndUpdate(
+        req.user?._id,
+        {
+            $set : {
+                coverImage : coverImage?.url
+            }
+        },
+        {new : true}
+    ).select("-password -refreshToken")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Cover Image changed Successfully",
+            {user}
+        )
+    )
+})
+
 export { 
     registerUser,
     loginUser,
     logoutUser,
     refreshAccessToken,
-    changeCurrentPassword
+    changeCurrentPassword,
+    getCurrentUser,
+    updateAccountDetails,
+    updateUserAvatar,
+    updateUserCoverImage
 }
