@@ -8,6 +8,7 @@ import {uploadToCloudinary} from "../utils/cloudinary.js"
 import { fileTypeFromFile } from "file-type"
 import { deleteFromCloudinary } from "../utils/deleteFromCloudinary.js"
 import fs from "fs"
+import { validateHeaderName } from "http"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
@@ -16,8 +17,7 @@ const getAllVideos = asyncHandler(async (req, res) => {
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
-    const { title, description} = req.body
-    // TODO: get video, upload to cloudinary, create video
+    const {title, description} = req.body
     const videoLocalPath = req.files?.video?.[0]?.path
     const thumbnailLocalPath = req.files?.thumbnail?.[0]?.path
 
@@ -61,7 +61,26 @@ const publishAVideo = asyncHandler(async (req, res) => {
 
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: get video by id
+    
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    if(video.owner.toString() !== req.user._id.toString() && !video.isPublished){
+        throw new ApiError(403, "Not authorized to access this video")
+    }
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Video successfully fetched",
+            video
+        )
+    )
 
 })
 
@@ -158,7 +177,29 @@ const deleteVideo = asyncHandler(async (req, res) => {
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
 
-    
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    if(video.owner.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "Not authorized to update")
+    }
+
+    video.isPublished = !video.isPublished
+
+    await video.save({validateBeforeSave : false})
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Video publish status changed",
+            video
+        )
+    )
 })
 
 export {
