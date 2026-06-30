@@ -5,6 +5,7 @@ import { uploadToCloudinary } from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/apiResponse.js";
 import jwt, { decode } from "jsonwebtoken"
 import { upload } from "../middleware/multer.middleware.js";
+import { deleteFromCloudinary } from "../utils/deleteFromCloudinary.js";
 import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async(userId) => {
@@ -25,6 +26,7 @@ const generateAccessAndRefreshTokens = async(userId) => {
         )
     }
 }
+
 
 const registerUser = asyncHandler( async (req, res) => {
     // get user details from frontend
@@ -397,15 +399,18 @@ const updateUserAvatar = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Error while Uploading to Cloudinary")
      }
 
-     const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set : {
-                avatar : avatar.url
-            }
-        },
-        {new : true}
-     ).select("-password -refreshToken")
+     const user = await User.findById(req.user._id).select("-password -refreshToken")
+     const oldAvatar = user.avatar
+     user.avatar = avatar.url
+
+     await user.save({validateBeforeSave : false})
+     
+     try{
+        await deleteFromCloudinary(oldAvatar, "image")
+     }
+     catch(error){
+        console.error("File could not be deleted ", error)
+     }
 
      return res
      .status(200)
@@ -433,15 +438,21 @@ const updateUserCoverImage = asyncHandler( async(req, res) => {
         throw new ApiError(400, "Error while uploading cover image")
     }
 
-    const user = await User.findByIdAndUpdate(
-        req.user?._id,
-        {
-            $set : {
-                coverImage : coverImage?.url
-            }
-        },
-        {new : true}
-    ).select("-password -refreshToken")
+    const user = await User.findById(req.user?._id).select("-password -refreshToken")
+    const oldCoverImageUrl = user.coverImage
+    user.coverImage = coverImage.url
+
+    await user.save({validateBeforeSave : false})
+    
+    if(oldCoverImageUrl){
+        try{
+            await deleteFromCloudinary(oldCoverImageUrl, "image")
+        }
+        catch(error){
+            console.error("File could not be deleted from cloudinary", error)
+        }
+    }
+
 
     return res.status(200)
     .json(

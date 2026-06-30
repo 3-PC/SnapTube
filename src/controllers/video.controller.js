@@ -6,6 +6,7 @@ import {ApiResponse} from "../utils/ApiResponse.js"
 import { asyncHandler} from "../utils/asyncHandler.js"
 import {uploadToCloudinary} from "../utils/cloudinary.js"
 import { fileTypeFromFile } from "file-type"
+import { deleteFromCloudinary } from "../utils/deleteFromCloudinary.js"
 import fs from "fs"
 
 
@@ -128,11 +129,36 @@ const updateVideo = asyncHandler(async (req, res) => {
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
-    //TODO: delete video
+
+    const video = await Video.findById(videoId)
+
+    if(!video){
+        throw new ApiError(404, "Video does not exist")
+    }
+
+    if(video.owner.toString() !== req.user._id.toString()){
+        throw new ApiError(403, "User not authorized to delete the video")
+    }
+
+    await deleteFromCloudinary(video.videoFile, "video")
+    await deleteFromCloudinary(video.thumbnail, "image")
+    
+    await Video.findByIdAndDelete(videoId)
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200,
+            "Video Successfully deleted"
+        )
+    )
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
+    
 })
 
 export {
