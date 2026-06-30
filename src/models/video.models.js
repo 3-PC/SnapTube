@@ -9,11 +9,10 @@ const videoSchema = new Schema ({
     },
     thumbnail : {
         type : String,
-        required : true
+        default : "https://res.cloudinary.com/fileupload3pc/image/upload/v1782831653/thum_iwrjl9.jpg"
     },
     title : {
         type : String,
-        required : true,
         default : "This video has no title"
     },
     description : {
