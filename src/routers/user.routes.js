@@ -14,6 +14,7 @@ import {
 } from "../controllers/user.controller.js";
 import { upload } from "../middleware/multer.middleware.js"
 import { verifyJWT } from "../middleware/auth.middleware.js";
+import { attemptAuth } from "../middleware/attemptauth.middleware.js";
 
 const router = Router()
 
@@ -73,7 +74,7 @@ router.route("/update-cover-image").patch(
 )
 
 router.route("/c/:username").get(
-    verifyJWT,
+    attemptAuth,
     getUserChannelProfile
 )
 

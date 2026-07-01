@@ -1,6 +1,6 @@
 import mongoose, {isValidObjectId} from "mongoose"
 import {Video} from "../models/video.models.js"
-import {User} from "../models/user.models.js"
+import { User } from "../models/user.models.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
 import { asyncHandler} from "../utils/asyncHandler.js"
@@ -12,8 +12,54 @@ import { validateHeaderName } from "http"
 
 
 const getAllVideos = asyncHandler(async (req, res) => {
-    const { page = 1, limit = 10, query, sortBy, sortType, userId } = req.query
-    //TODO: get all videos based on query, sort, pagination
+    const { page = 1, limit = 10, query, sortBy = "createdAt", sortType = "desc"} = req.query
+    const { userId } = req.params
+
+    if(!mongoose.isValidObjectId(userId)){
+        throw new ApiError(400, "Invalid user id")
+    }
+
+    const user = await User.findById(userId)
+
+    if(!user){
+        throw new ApiError(404, "User not found")
+    }
+
+    const matchCriteria = {
+        owner : new mongoose.Types.ObjectId(userId)
+    }
+
+    if(userId.toString() !== req.user?._id?.toString()){
+        matchCriteria.isPublished = true
+    }
+
+    const videoAggregate = Video.aggregate([
+        {
+            $match : matchCriteria
+        },
+        {
+            $sort : {
+                [sortBy] : sortType === "asc" ? 1 : -1
+            }
+        }
+    ])
+
+    const options = {
+        page : parseInt(page, 10),
+        limit : parseInt(limit, 10)
+    }
+
+    const videos = await Video.aggregatePaginate(videoAggregate, options)
+
+    return res
+    .status(200)
+    .json(
+        new ApiResponse(
+            200, 
+            "Video Successfully fetched",
+            videos
+        )
+    )
 })
 
 const publishAVideo = asyncHandler(async (req, res) => {
@@ -62,13 +108,17 @@ const publishAVideo = asyncHandler(async (req, res) => {
 const getVideoById = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     
+    if(!mongoose.isValidObjectId(videoId)){
+        throw new ApiError(400, "Incorrect video id")
+    }
+    
     const video = await Video.findById(videoId)
 
     if(!video){
         throw new ApiError(404, "Video does not exist")
     }
 
-    if(video.owner.toString() !== req.user._id.toString() && !video.isPublished){
+    if(video.owner.toString() !== req.user?._id?.toString() && !video.isPublished){
         throw new ApiError(403, "Not authorized to access this video")
     }
 
