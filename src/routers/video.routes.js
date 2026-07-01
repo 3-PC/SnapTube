@@ -30,7 +30,7 @@ router.route("/:videoId")
     updateVideo
 )
 .delete(
-    verifyJWT, 
+    verifyJWT,  
     deleteVideo
 )
 .get(
